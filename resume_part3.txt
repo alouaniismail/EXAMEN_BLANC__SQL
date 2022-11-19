@@ -1,0 +1,226 @@
+L'équivalent pour la 1ere base cinema:
+etudiants
+logements
+sejour
+VS.
+acteur
+role
+film
+realisateur (en plus)
+1.
+1. La liste, sans répétition, des étudiants qui ont occupé le logement d’identifiant ’A235’.
+
+select distinct NumEtudiant, Nom, Prenom, Sexe, DateDeNaissance
+from Etudiant natural Sejour
+natural join Logement 
+where IdLogement='A235';
+
+2. La liste des logements non occupés le 1er octobre 1952.
+
+REPRENONS DEPUIS LE DEBUT:
+select IdLogement, Description, Batiment, Capacite
+from Logement natural join Sejour
+natural join Etudiant
+where (DateDebut < DATE '1952-10-01' and DateFin < DATE '1952-10-01')
+or 
+(DateDebut > DATE '1952-10-01 and DateFin > DATE '1952-10-01');
+
+#tjrs: triple jointure puis selection d'apres les deux attributs '''' date de debut et date de fin. Il faut que soit date de debut et date de fin soit < date '1952-10-01' ou bien tous les deux superieurs, ainsi aucun logement ne presente un intervalle ou cette particuliere date s'y trouve
+<=>logements non occupes le 1er octobre 1952.(plus simple)
+
+
+3. La liste des étudiants, avec pour chaque étudiant, le nombre de séjours enregistrés et la durée cumulée des séjours (en jours), triée par nombre de séjours décroissant puis par ordre alphabétique sur les noms.
+On supposera que la différence entre deux dates retourne un nombre de jours.
+
+select NumEtudiant, Nom, count(IdSejour) as nbr_sejours, sum(DateDebut-DateFin) as DT_sejours__enregistres
+from Etudiant natural join Sejour
+natural join Logement
+group by NumEtudiant, Nom
+order by nbr_sejours desc, Nom asc;
+
+4. On suppose que certains logements peuvent accueillir deux étudiants en même temps. Ecrire une requête dont le résultat donne sur chaque ligne les noms et numéros de deux étudiants ayant partagé le même logement ; noter que les dates des séjours ne co ̈incident pas forc ́ement.
+
+select distinct E.NumEtudiant, E.Nom from
+Etudiant E inner join Sejour S
+on E.NumEtudiant=S.NumEtudiant
+inner join Logement L1
+on L1.IdLogement=S.IdLogement
+inner join Logement L2
+on L2.IdLogement=L1.IdLogement; 
+#ça va donner des numeros d'etudiants alignements avec les noms correspondants
+#tq: dans toute la table, pour toute ligne, il existe une ligne
+#definissant le partage de logement(colocation..)
+#c'est pas exactement ça qu'on veut.
+
+=>La vraie requête selon notre analyse:
+select S1.NumEtudiant, S2.NumEtudiant
+from Sejour S1 inner join Sejour S2
+on S1.IdLogement = S2.IdLogement #<=>jointure naturelle(jointure sous conditions)../////
+where S1.NumEtudiant != S2.NumEtudiant;
+
+#là sur la ligne, forcément le couple présente une colocation(abrite le même logement).
+ 
+
+
+5. Ecrire une vue qui contient, pour chaque logement, le nombre de places disponibles au 1er janvier 2027.
+
+#cad., pour tout logement, on devrait ...
+REPRENONS LA DEUXIEME REQUETE:
+select IdLogement from Logement 
+minus
+select IdLogement from
+Logement natural join Sejour
+natural join Etudiant
+where (DateDebut >= DATE '1952-10-01')
+or 
+(DateDebut <= DATE '1952-19-01' and DateFin >= DATE '1952-10-01');
+#operateur ensembliste
+#on recupere les logements occupés forcément par un étudiant tq la date d'occupation
+#couvre le 1er octobre. 1952 puis on récupère tous les logements
+#-les logements occupés le 1er octobre 1952.
+#raisonnez par la négation(!!).(cf. compilation exo4. td1--  ).
+
+=>REPRENONS LA VUE:(une place/logement ### l'hypothèse précédente)
+create or replace view vue as
+select IdLogement, count(NumEtudiant)-1
+from Etudiant natural join Sejour
+natural join Logement
+where DateDebut = DATE '2027-01-01'
+group by IdLogement;
+
+Reprise rapide des 4 premieres requetes:
+1.select NumEtudiant, Nom
+from Etudiant natural join Sejour
+natural join Logement
+where IdLogement='A235';
+2.select IdLogement from
+Logement natural join Sejour
+where (DateDebut > DATE '1952-10-01')
+or
+(DateDebut < DATE '1952-10-01' and DateFin < DATE '1952-10-01');
+#pas mieux(on verra apres)...
+3.select NumEtudiant, Nom, count(IdSejour) as nbr_sejours, sum(DateFin-DateDebut)
+from Etudiant natural join Sejour
+natural join Logement
+group by NumEtudiant, Nom
+order by nbr_sejours desc, Nom asc;
+4.select S1.NumEtudiant, S2.NumEtudiant
+from Sejour S1 inner join Sejour S2
+on S1.IdLogement=S2.IdLogement
+and S1.NumEtudiant != S2.NumEtudiant;
+5.(la vue)..///
+
+
+========================================================================================
+
+Les requetes a traduire, faire sur la nouvelle base selon le schema de traduction precis et verifier tout a la fin.
+
+1/-
+La liste sans repetition des acteurs qui ont joue dans le film 'LA FAC'.
+select distinct NUMERO_ACTEUR, NOM_ACTEUR, PRENOM_ACTEUR, NATION_ACTEUR, DATE_DE_NAISSANCE from
+ACTEUR natural join ROLE
+natural join FILM
+where FILM.TITRE_FILM='LA FAC';
+
+2/
+La liste des films non sortis le 1951-01-01 et le 1956-01-01:
+select NUMERO_FILM, TITRE_FILM, DATE_DE_SORTIE from
+ACTEUR natural join ROLE
+natural join FILM
+where (FILM.DATE_DE_SORTIE < DATE '1956-01-01' and FILM.DATE_DE_SORTIE < DATE '1951-01-01')
+or 
+(FILM.DATE_DE_SORTIE > DATE '1956-01-01' and FILM.DATE_DE_SORTIE > DATE '1969-01-01');
+
+3/
+La liste des acteurs avec le nombre de films tournés et la durée cumulée de tous ses durées de films ordonnée par le nombre de films tournés par descroissance et le nom de l'acteur par ordre alphabétique:
+select NUMERO_ACTEUR, NOM_ACTEUR, count(NUMERO_FILM) as nbr_films, sum(DUREE) as DT
+from ACTEUR natural join ROLE
+natural join FILM
+group by NUMERO_ACTEUR, NOM_ACTEUR
+order by nbr_films desc, NOM_ACTEUR asc;
+#verification:
+NOM_ACTEUR='MONTAND';(3 films de DT=310 mns)
+select NUMERO_ACTEUR, NOM_ACTEUR, count(NUMERO_FILM) as nbr_films, sum(DUREE) as DT
+from ACTEUR natural join ROLE
+natural join FILM
+where NOM_ACTEUR='MONTAND'
+group by NOM_ACTEUR, NUMERO_ACTEUR;
+=>C'est la même chose.
+
+4/La liste des acteurs jouant le même film:(l'ensemble des acteurs dont au moins l'un des couples d'acteurs a un film en commun(*))
+select distinct A.NUMERO_ACTEUR, A.NOM_ACTEUR from
+ACTEUR A inner join ROLE R
+on A.NUMERO_ACTEUR=R.NUMERO_ACTEUR
+inner join FILM F1
+on F1.NUMERO_FILM=R.NUMERO_FILM
+inner join FILM F2
+on F1.NUMERO_FILM=F2.NUMERO_FILM;
+#verification: Montand et garcia(*)
+select NOM_ACTEUR,NUMERO_FILM,TITRE_FILM
+from ACTEUR natural join ROLE
+natural join FILM
+where NOM_ACTEUR='MONTAND' or NOM_ACTEUR='DALLE';###(*).YES.///
+(quelqu'un avec quelqu'un ; c'est ça la règle)
+
+select R1.NUMERO_ACTEUR,R2.NUMERO_ACTEUR from
+ROLE R1 inner join ROLE R2
+on R1.NUMERO_FILM=R2.NUMERO_FILM
+where R1.NUMERO_ACTEUR != R2.NUMERO_ACTEUR;
+
+#verification(Bourvil && Gamin (2 films dont l'un est commun pour le deuxième))
+select NOM_ACTEUR,NUMERO_FILM,TITRE_FILM
+from ACTEUR natural join ROLE
+natural join FILM
+where NUMERO_ACTEUR=16 or NUMERO_ACTEUR=26;
+
+5/Le nombre de films sortis depuis le 1986-01-01:
+create or replace view vue as
+select count(*) as NBR_FILMS__INTERESSANTS
+from FILM
+where DATE_DE_SORTIE > DATE '1986-01-01';
+
+puis consultation :
+select * from vue;
+=>celle-ci est triviale.
+
+Le nombre d'acteurs opérant dans des films sortis après le 01-JANV-1986:
+select count(*)
+from(
+select NUMERO_ACTEUR
+from ACTEUR natural join ROLE
+natural join FILM
+where DATE_DE_SORTIE > DATE '1986-01-01'
+group by NUMERO_ACTEUR);
+
+=>Developpons la 2ieme requete (la 1ere, 3ieme, 4ieme sont bonnes des deux cotes)
+La liste des acteurs qui jouent pas dans les films sortis le 1er janvier. 1986:
+select NOM_ACTEUR,NUMERO_ACTEUR from ACTEUR
+minus
+select A.NOM_ACTEUR, A.NUMERO_ACTEUR from
+ACTEUR A left outer join ROLE R
+on A.NUMERO_ACTEUR=R.NUMERO_ACTEUR
+right outer join FILM F
+on R.NUMERO_FILM=F.NUMERO_FILM
+where F.DATE_DE_SORTIE = DATE '1986-01-01';
+
+select DATE_DE_SORTIE
+from ACTEUR natural join ROLE natural join FILM
+where NOM_ACTEUR='NEWMAN';#verification simple.
+
+
+#test du 1-count(..): NON COUNT(*)-1.
+select count(*)-1
+from(
+select NUMERO_ACTEUR
+from ACTEUR natural join ROLE
+natural join FILM
+where DATE_DE_SORTIE > DATE '1986-01-01'
+group by NUMERO_ACTEUR);
+
+
+
+
+
+
+
+FIN_EXAMEN__BLANC.
