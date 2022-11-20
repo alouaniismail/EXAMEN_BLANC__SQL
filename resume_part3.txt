@@ -27,7 +27,17 @@ or
 
 #tjrs: triple jointure puis selection d'apres les deux attributs '''' date de debut et date de fin. Il faut que soit date de debut et date de fin soit < date '1952-10-01' ou bien tous les deux superieurs, ainsi aucun logement ne presente un intervalle ou cette particuliere date s'y trouve
 <=>logements non occupes le 1er octobre 1952.(plus simple)
+=>utilisation d'operations ensemblistes
+=>=>proceder par la negation(comme:(partiel 2018/2019) les medecins qui referents aucun patients)
 
+select Logements.*
+from Logement 
+minus
+select Logements.*
+from Logement natural join Sejours natural join Etudiants
+where (DateDebut < DATE '1952-10-01' and DateFin > DATE '1952-10-01')  
+
+Cette clause est plus simple que la precedente.
 
 3. La liste des étudiants, avec pour chaque étudiant, le nombre de séjours enregistrés et la durée cumulée des séjours (en jours), triée par nombre de séjours décroissant puis par ordre alphabétique sur les noms.
 On supposera que la différence entre deux dates retourne un nombre de jours.
@@ -59,7 +69,42 @@ on S1.IdLogement = S2.IdLogement #<=>jointure naturelle(jointure sous conditions
 where S1.NumEtudiant != S2.NumEtudiant;
 
 #là sur la ligne, forcément le couple présente une colocation(abrite le même logement).
- 
+#si on fait une jointure ?
+select E1.*, E2.*
+from ETUDIANTS E1 natural join ETUDIANTS E2 
+natural join SEJOURS
+natural join LOGEMENTS 
+where E1.idLogement=E2.idLogement
+and E1.numEtudiant != E2.numEtudiant;
+
+cad., l'équi-jointure c'est pour faire depuis 2 instances une récepuration d'une caractéristique commune suivant des conditions on y ajoute les attributions logements via sejours ce qui signifie pas seulement les proprietees des etudiants comme table presentees mais aussi les logements .. => faire une intersection.
+#pas vraiment..
+
+select E.* #attribution via un étudiant d'un logement précis
+from E1 natural join S natural join L
+natural join E2 #equi-jointure avec E2 proprietees communes a voir
+..
+
+Il faut 2 tables:
+(les etudiants dans le même logement)
+select E1.*, E2.* from
+(
+select E.*,IdLogement
+from
+(
+select E.*, IdLogement
+from E natural join S natural join Ls
+)
+inner join (
+select E2.*,IdLogement
+from(
+select E2.*, IdLogement
+from E2 natural join S natural join Ls 
+)
+using(IdLogement)
+)); #<=>Les etudiants presentant les mêmes attributions logement.
+
+Methode plus difficile (passage par sejour qui est comme un historique, c'est mieux).
 
 
 5. Ecrire une vue qui contient, pour chaque logement, le nombre de places disponibles au 1er janvier 2027.
